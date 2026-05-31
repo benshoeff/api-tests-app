@@ -1,0 +1,37 @@
+---
+description: Backend API and executor conventions
+globs: "src/app/api/**,src/lib/**,prisma/**"
+alwaysApply: false
+---
+
+# Backend API Rules
+
+## Route handlers
+
+```typescript
+// ✅ Validate input
+const parsed = createTestSchema.safeParse(body);
+if (!parsed.success) {
+  return NextResponse.json({ error: { code: 'VALIDATION', message: '...' } }, { status: 400 });
+}
+
+// ✅ Typed Prisma queries
+const test = await db.test.findUnique({ where: { id }, include: { steps: true } });
+```
+
+## Executor
+
+- All HTTP execution server-side only (`src/lib/executor/`)
+- Sequential steps; stop on first failure (MVP)
+- Truncate stored response bodies at 256KB
+
+## Prisma
+
+- Use `@id @default(cuid())` for IDs
+- JSON columns for step config and run snapshots
+- Cascade delete: Test → Steps, TestRun → StepResults
+
+## Errors
+
+- Never leak stack traces to client in production
+- Log server-side with context; redact secrets

@@ -1,0 +1,28 @@
+---
+description: Core conventions for the API Tests App — stack, language, and architecture
+alwaysApply: true
+---
+
+# API Tests App — Core Rules
+
+- **UI language:** English only for all user-facing strings
+- **Stack:** Next.js 15 App Router, TypeScript, Prisma, SQLite, shadcn/ui, Tailwind
+- **Deployment:** Local-first; single workspace; no auth in MVP
+- **Source of truth:** Read `docs/PLAN.md` and `AGENTS.md` before architectural changes
+
+## Code style
+
+- Strict TypeScript; no `any` without comment
+- Zod for API input validation
+- Prefer server components; use `"use client"` only when needed
+- Colocate feature components under `src/components/<feature>/`
+
+## Data access
+
+- Prisma client singleton in `src/lib/db.ts`
+- API routes return `{ data }` or `{ error: { code, message } }`
+
+## Security
+
+- Mask secret variables in UI and logs
+- Do not expose SQLite file path in API responses

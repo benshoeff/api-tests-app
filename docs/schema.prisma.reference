@@ -1,0 +1,122 @@
+// Prisma schema reference — implement in Phase 0
+// See docs/PLAN.md for full data model documentation
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Environment {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  baseUrl   String?
+  color     String   @default("blue")
+  isDefault Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  variableValues EnvironmentValue[]
+  testRuns       TestRun[]
+}
+
+model GlobalVariable {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  description String?
+  isSecret    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  values EnvironmentValue[]
+}
+
+model EnvironmentValue {
+  id          String @id @default(cuid())
+  value       String
+  variableId  String
+  environmentId String
+
+  variable    GlobalVariable @relation(fields: [variableId], references: [id], onDelete: Cascade)
+  environment Environment    @relation(fields: [environmentId], references: [id], onDelete: Cascade)
+
+  @@unique([variableId, environmentId])
+}
+
+model SharedStep {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  items SharedStepItem[]
+}
+
+model SharedStepItem {
+  id           String @id @default(cuid())
+  sharedStepId String
+  sortOrder    Int
+  type         String // http | assert | delay
+  config       Json
+
+  sharedStep SharedStep @relation(fields: [sharedStepId], references: [id], onDelete: Cascade)
+}
+
+model Test {
+  id              String   @id @default(cuid())
+  name            String
+  description     String?
+  timeoutMs       Int      @default(30000)
+  environmentIds  Json     @default("[]") // string[] — empty = all envs
+  tags            Json     @default("[]")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  steps TestStep[]
+  runs  TestRun[]
+}
+
+model TestStep {
+  id        String @id @default(cuid())
+  testId    String
+  sortOrder Int
+  type      String // http | assert | delay | shared_ref
+  config    Json
+
+  test Test @relation(fields: [testId], references: [id], onDelete: Cascade)
+}
+
+model TestRun {
+  id            String    @id @default(cuid())
+  testId        String
+  environmentId String
+  status        String    @default("pending") // pending|running|passed|failed|timeout|cancelled
+  startedAt     DateTime  @default(now())
+  finishedAt    DateTime?
+  durationMs    Int?
+
+  test        Test        @relation(fields: [testId], references: [id], onDelete: Cascade)
+  environment Environment @relation(fields: [environmentId], references: [id])
+  stepResults StepResult[]
+}
+
+model StepResult {
+  id           String @id @default(cuid())
+  runId        String
+  stepIndex    Int
+  stepType     String
+  status       String // passed|failed|skipped|error
+  durationMs   Int?
+  request      Json?
+  response     Json?
+  assertions   Json?
+  errorMessage String?
+
+  run TestRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+}

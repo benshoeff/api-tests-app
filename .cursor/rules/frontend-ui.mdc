@@ -1,0 +1,33 @@
+---
+description: Frontend UI and UX standards for 2026 design language
+globs: "**/*.tsx"
+alwaysApply: false
+---
+
+# Frontend UI Rules
+
+## Design system
+
+- shadcn/ui (New York) + Tailwind CSS 4
+- Geist Sans / Geist Mono fonts
+- Support light and dark via `next-themes`
+- Environment shown as color-coded pill in top bar — always visible
+
+## UX patterns
+
+- List → detail navigation for Tests, Shared Steps, Runs
+- Optimistic updates on delete; toast on success/error
+- Skeleton loaders during fetch; empty states with primary CTA
+- Drag-and-drop step reorder in test editor
+
+## State
+
+- TanStack Query for server data
+- URL search params for filters (`?environmentId=`, `?status=`)
+- Active environment in React context + localStorage persistence
+
+## Accessibility
+
+- Keyboard navigable step list
+- `aria-label` on icon-only buttons
+- Focus visible on all interactive elements
