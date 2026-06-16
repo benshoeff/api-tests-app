@@ -1,4 +1,4 @@
-import { extractJsonPath } from "@/lib/variables";
+import { compareValues, evaluateJsonPathAssertion } from "@/lib/assertion-utils";
 import { db } from "@/lib/db";
 import type {
   AssertStepConfig,
@@ -84,20 +84,23 @@ export function evaluateAssertions(
         actual = context.status;
         passed = context.status === Number(a.expected);
         break;
-      case "header":
+      case "header": {
         actual = context.headers[a.target?.toLowerCase() ?? ""] ?? "";
-        passed = String(actual) === String(a.expected);
-        break;
-      case "jsonPath": {
-        const val = extractJsonPath(context.parsedBody, a.target ?? "$.");
-        actual = val == null ? "" : String(val);
-        passed = actual === String(a.expected);
+        passed = compareValues(String(actual), String(a.expected), a.operator ?? "is");
         break;
       }
-      case "contains":
-        actual = context.body.includes(String(a.expected)) ? "found" : "not found";
-        passed = context.body.includes(String(a.expected));
+      case "jsonPath": {
+        const result = evaluateJsonPathAssertion(context.parsedBody, a);
+        actual = result.actual;
+        passed = result.passed;
         break;
+      }
+      case "contains": {
+        const op = a.operator ?? "contains";
+        actual = context.body;
+        passed = compareValues(context.body, String(a.expected), op);
+        break;
+      }
       case "responseTime":
         actual = context.durationMs;
         passed = context.durationMs <= Number(a.expected);

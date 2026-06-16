@@ -27,10 +27,25 @@ export interface HttpStepConfig {
   captureVariables?: Record<string, string>;
 }
 
+export type AssertionOperator =
+  | "is"
+  | "is_not"
+  | "contains"
+  | "not_contains"
+  | "gt"
+  | "lt"
+  | "regex"
+  | "not_regex"
+  | "undefined";
+
+export type ElementSelector = "body" | "any" | "first" | "every";
+
 export interface Assertion {
   type: "status" | "header" | "jsonPath" | "contains" | "responseTime";
   target?: string;
   expected: string | number;
+  operator?: AssertionOperator;
+  elementSelector?: ElementSelector;
   actual?: string | number;
   passed?: boolean;
 }
