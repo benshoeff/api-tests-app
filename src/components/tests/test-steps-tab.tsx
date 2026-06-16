@@ -26,6 +26,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 import { Card } from "@/components/ui/card";
 import { useFetch } from "@/hooks/use-fetch";
+import { AssertionsEditor, collectExtractedVariables, parseAssertions } from "@/components/tests/assertions-editor";
 
 type SubTab = "configuration" | "assertions" | "extracted";
 
@@ -37,9 +38,11 @@ interface SharedStepOption {
 export function TestStepsTab({
   steps,
   onChange,
+  testId,
 }: {
   steps: StepDraft[];
   onChange: (steps: StepDraft[]) => void;
+  testId?: string;
 }) {
   const { data: sharedSteps } = useFetch<SharedStepOption[]>("/api/shared-steps");
   const [expanded, setExpanded] = useState<Set<number>>(new Set([0]));
@@ -270,15 +273,11 @@ export function TestStepsTab({
                       )}
 
                       {getSubTab(index) === "assertions" && (
-                        <Textarea
-                          className="font-mono text-xs"
-                          rows={8}
-                          value={JSON.stringify(config.assertions ?? [], null, 2)}
-                          onChange={(e) => {
-                            try {
-                              updateStep(index, { ...config, assertions: JSON.parse(e.target.value) });
-                            } catch { /* ignore */ }
-                          }}
+                        <AssertionsEditor
+                          assertions={parseAssertions(config.assertions)}
+                          onChange={(assertions) => updateStep(index, { ...config, assertions })}
+                          testId={testId}
+                          extractedVariables={collectExtractedVariables(steps, index)}
                         />
                       )}
 
@@ -299,15 +298,11 @@ export function TestStepsTab({
                   )}
 
                   {step.type === "assert" && (
-                    <Textarea
-                      className="font-mono text-xs"
-                      rows={8}
-                      value={JSON.stringify(config.assertions ?? [], null, 2)}
-                      onChange={(e) => {
-                        try {
-                          updateStep(index, { ...config, assertions: JSON.parse(e.target.value) });
-                        } catch { /* ignore */ }
-                      }}
+                    <AssertionsEditor
+                      assertions={parseAssertions(config.assertions)}
+                      onChange={(assertions) => updateStep(index, { ...config, assertions })}
+                      testId={testId}
+                      extractedVariables={collectExtractedVariables(steps, index)}
                     />
                   )}
 

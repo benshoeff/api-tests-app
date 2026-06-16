@@ -96,7 +96,7 @@ function TestEditorContent() {
           onTimeoutChange={setTimeoutMs}
         />
       )}
-      {tab === "steps" && <TestStepsTab steps={steps} onChange={setSteps} />}
+      {tab === "steps" && <TestStepsTab steps={steps} onChange={setSteps} testId={id} />}
       {tab === "variables" && <TestVariablesTab testId={id} />}
       {tab === "runs" && <TestRunsTab testId={id} />}
       {tab === "schedule" && <TestScheduleTab testId={id} />}
