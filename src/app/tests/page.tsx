@@ -112,7 +112,7 @@ export default function TestsPage() {
                   </Link>
                   <div className="flex items-center gap-2">
                     <Button
-                      variant="secondary"
+                      variant="primary"
                       size="sm"
                       disabled={!activeEnvironment || running === test.id}
                       onClick={() => handleRun(test.id)}
