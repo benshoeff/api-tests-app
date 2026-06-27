@@ -12,7 +12,8 @@ export type AssertionOperator =
   | "lt"
   | "regex"
   | "not_regex"
-  | "undefined";
+  | "undefined"
+  | "is_not_empty";
 
 export type ElementSelector = "body" | "any" | "first" | "every";
 
@@ -34,6 +35,7 @@ export const OPERATORS: { value: AssertionOperator; label: string }[] = [
   { value: "regex", label: "matches regex" },
   { value: "not_regex", label: "does not match regex" },
   { value: "undefined", label: "is undefined" },
+  { value: "is_not_empty", label: "is not empty" },
 ];
 
 export const ELEMENT_SELECTORS: { value: ElementSelector; label: string }[] = [
@@ -47,11 +49,18 @@ export const DYNAMIC_FUNCTIONS = [
   "{{env.name}}",
   "{{env.baseUrl}}",
   "{{run.id}}",
-  "{{timestamp}}",
+  "{{$timestamp}}",
   "{{$isoTimestamp}}",
+  "{{$randomEmail}}",
+  "{{$randomUserName}}",
+  "{{$randomName}}",
+  "{{$randomFirstName}}",
+  "{{$randomLastName}}",
+  "{{$randomPhone}}",
+  "{{$randomUUID}}",
   "{{$randomInt}}",
-  "{{$randomNumber(1:100)}}",
-  "{{date(0d, YYYY-MM-DD)}}",
+  "{{$randomBoolean}}",
+  "{{$randomWord}}",
 ];
 
 export function toUiType(assertion: Assertion): UiAssertionType {
@@ -108,6 +117,7 @@ export function formatAssertionSummary(assertion: Assertion): string {
   const uiType = toUiType(assertion);
   const op = OPERATORS.find((o) => o.value === (assertion.operator ?? "is"))?.label ?? "is";
   const expected = String(assertion.expected);
+  const isEmptyOp = assertion.operator === "is_not_empty";
 
   switch (uiType) {
     case "status":
@@ -115,15 +125,19 @@ export function formatAssertionSummary(assertion: Assertion): string {
     case "responseTime":
       return `Response time is less than ${expected}ms`;
     case "header":
-      return `Header "${assertion.target ?? ""}" ${op} ${quote(expected)}`;
+      return isEmptyOp
+        ? `Header "${assertion.target ?? ""}" ${op}`
+        : `Header "${assertion.target ?? ""}" ${op} ${quote(expected)}`;
     case "bodyValue": {
       const selector = assertion.elementSelector ?? "body";
       const selectorLabel =
         ELEMENT_SELECTORS.find((s) => s.value === selector)?.label ?? selector;
-      return `${assertion.target ?? "$."} (${selectorLabel}) ${op} ${quote(expected)}`;
+      return isEmptyOp
+        ? `${assertion.target ?? "$."} (${selectorLabel}) ${op}`
+        : `${assertion.target ?? "$."} (${selectorLabel}) ${op} ${quote(expected)}`;
     }
     case "body":
-      return `Body ${op} ${quote(expected)}`;
+      return isEmptyOp ? `Body ${op}` : `Body ${op} ${quote(expected)}`;
   }
 }
 
@@ -164,6 +178,8 @@ export function compareValues(
       }
     case "undefined":
       return actual === "" || actual === "undefined" || actual === "null";
+    case "is_not_empty":
+      return actual !== "" && actual !== "undefined" && actual !== "null";
   }
 }
 

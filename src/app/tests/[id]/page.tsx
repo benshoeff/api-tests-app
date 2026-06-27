@@ -1,16 +1,17 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useMemo, useState } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useEnvironment } from "@/components/layout/environment-provider";
 import { useFetch, apiPatch, apiPost } from "@/hooks/use-fetch";
 import { TestDetailShell, useTestTab } from "@/components/tests/test-detail-shell";
 import { TestOverviewTab } from "@/components/tests/test-overview-tab";
-import { TestStepsTab } from "@/components/tests/test-steps-tab";
+import { SplitStepEditor } from "@/components/tests/split-step-editor";
 import { TestVariablesTab } from "@/components/tests/test-variables-tab";
 import { TestRunsTab } from "@/components/tests/test-runs-tab";
 import { TestScheduleTab } from "@/components/tests/test-schedule-tab";
 import { normalizeStepsForSave, stepsFromApi, type StepDraft } from "@/lib/step-utils";
+import type { Assertion } from "@/types";
 
 interface TestDetail {
   id: string;
@@ -24,6 +25,7 @@ function TestEditorContent() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const tab = useTestTab();
+  const searchParams = useSearchParams();
   const { activeEnvironment } = useEnvironment();
   const { data: test, loading, refresh } = useFetch<TestDetail>(`/api/tests/${id}`, [id]);
 
@@ -35,14 +37,59 @@ function TestEditorContent() {
   const [running, setRunning] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const assertProps = useMemo(() => {
+    const ap = searchParams.get("assertPath");
+    const av = searchParams.get("assertValue");
+    const as = searchParams.get("assertStep");
+    if (ap && av && as !== null) {
+      return { path: ap, value: av, stepIndex: Number(as) };
+    }
+    return null;
+  }, [searchParams]);
+
   useEffect(() => {
     if (test) {
       setName(test.name);
       setDescription(test.description ?? "");
       setTimeoutMs(test.timeoutMs);
-      setSteps(stepsFromApi(test.steps));
+      let loaded = stepsFromApi(test.steps);
+
+      if (assertProps) {
+        const { path, value, stepIndex } = assertProps;
+        const target = loaded[stepIndex];
+        if (target) {
+          const newAssertion: Assertion = {
+            type: "jsonPath",
+            target: path,
+            expected: value,
+            operator: "is",
+            elementSelector: "body",
+          };
+          const existing = Array.isArray(target.config.assertions) ? target.config.assertions : [];
+          loaded = loaded.map((s, i) =>
+            i === stepIndex
+              ? { ...s, config: { ...s.config, assertions: [...existing, newAssertion] } }
+              : s
+          );
+
+          apiPatch(`/api/tests/${id}`, {
+            name: test.name,
+            description: test.description,
+            timeoutMs: test.timeoutMs,
+            steps: loaded.map((s, i) => ({ type: s.type, sortOrder: i, config: s.config })),
+          });
+
+          const params = new URLSearchParams(searchParams.toString());
+          params.delete("assertPath");
+          params.delete("assertValue");
+          params.delete("assertStep");
+          router.replace(`/tests/${id}?${params.toString()}`, { scroll: false });
+        }
+      }
+
+      setSteps(loaded);
     }
-  }, [test]);
+  }, [test, assertProps, id, router, searchParams]);
 
   const saveTest = async () => {
     setSaving(true);
@@ -96,7 +143,7 @@ function TestEditorContent() {
           onTimeoutChange={setTimeoutMs}
         />
       )}
-      {tab === "steps" && <TestStepsTab steps={steps} onChange={setSteps} testId={id} />}
+      {tab === "steps" && <SplitStepEditor steps={steps} onChange={setSteps} testId={id} />}
       {tab === "variables" && <TestVariablesTab testId={id} />}
       {tab === "runs" && <TestRunsTab testId={id} />}
       {tab === "schedule" && <TestScheduleTab testId={id} />}

@@ -222,13 +222,13 @@ function AssertionEditCard({
   );
 
   const showOperator = uiType !== "status" && uiType !== "responseTime";
-  const showExpected = draft.operator !== "undefined";
+  const showExpected = draft.operator !== "undefined" && draft.operator !== "is_not_empty";
   const operatorsForType =
     uiType === "responseTime"
       ? OPERATORS.filter((o) => o.value === "lt")
       : uiType === "body"
         ? OPERATORS.filter((o) =>
-            ["is", "is_not", "contains", "not_contains", "regex", "not_regex"].includes(o.value)
+            ["is", "is_not", "contains", "not_contains", "regex", "not_regex", "is_not_empty"].includes(o.value)
           )
         : OPERATORS;
 
