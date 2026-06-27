@@ -35,31 +35,51 @@ export function useFetch<T>(url: string | null, deps: unknown[] = []) {
   return { data, loading, error, refresh };
 }
 
+async function parseJsonSafe(res: Response): Promise<{ data?: unknown; error?: string }> {
+  const text = await res.text();
+  if (text.startsWith("<!DOCTYPE") || text.startsWith("<html") || text.startsWith("<!DOC")) {
+    return { error: `Server returned ${res.status} HTML page` };
+  }
+  try {
+    const json = JSON.parse(text);
+    if (json.error) return { error: json.error.message };
+    return { data: json.data ?? json };
+  } catch {
+    return { error: "Invalid response from server" };
+  }
+}
+
 export async function apiPost<T>(url: string, body?: unknown): Promise<{ data?: T; error?: string }> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-  const json = await res.json();
-  if (json.error) return { error: json.error.message };
-  return { data: json.data };
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    return (await parseJsonSafe(res)) as { data?: T; error?: string };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Request failed" };
+  }
 }
 
 export async function apiPatch<T>(url: string, body: unknown): Promise<{ data?: T; error?: string }> {
-  const res = await fetch(url, {
-    method: "PATCH",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const json = await res.json();
-  if (json.error) return { error: json.error.message };
-  return { data: json.data };
+  try {
+    const res = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    return (await parseJsonSafe(res)) as { data?: T; error?: string };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Request failed" };
+  }
 }
 
 export async function apiDelete(url: string): Promise<{ error?: string }> {
-  const res = await fetch(url, { method: "DELETE" });
-  const json = await res.json();
-  if (json.error) return { error: json.error.message };
-  return {};
+  try {
+    const res = await fetch(url, { method: "DELETE" });
+    return (await parseJsonSafe(res)) as { error?: string };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "Request failed" };
+  }
 }

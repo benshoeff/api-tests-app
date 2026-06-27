@@ -1,5 +1,6 @@
 import { compareValues, evaluateJsonPathAssertion } from "@/lib/assertion-utils";
 import { db } from "@/lib/db";
+import { interpolate, type VariableContext } from "@/lib/variables";
 import type {
   AssertStepConfig,
   Assertion,
@@ -73,24 +74,33 @@ export function evaluateAssertions(
     body: string;
     durationMs: number;
     parsedBody: unknown;
-  }
+  },
+  varCtx?: VariableContext
 ): { passed: boolean; results: Assertion[] } {
   const results: Assertion[] = assertions.map((a) => {
+    const expected = varCtx
+      ? interpolate(String(a.expected), varCtx)
+      : String(a.expected);
+    const target = varCtx && a.target
+      ? interpolate(a.target, varCtx)
+      : a.target;
+
     let actual: string | number = "";
     let passed = false;
 
     switch (a.type) {
       case "status":
         actual = context.status;
-        passed = context.status === Number(a.expected);
+        passed = compareValues(String(context.status), expected, a.operator ?? "is");
         break;
       case "header": {
-        actual = context.headers[a.target?.toLowerCase() ?? ""] ?? "";
-        passed = compareValues(String(actual), String(a.expected), a.operator ?? "is");
+        actual = context.headers[target?.toLowerCase() ?? ""] ?? "";
+        passed = compareValues(String(actual), expected, a.operator ?? "is");
         break;
       }
       case "jsonPath": {
-        const result = evaluateJsonPathAssertion(context.parsedBody, a);
+        const interpolated: Assertion = { ...a, expected, target };
+        const result = evaluateJsonPathAssertion(context.parsedBody, interpolated);
         actual = result.actual;
         passed = result.passed;
         break;
@@ -98,12 +108,12 @@ export function evaluateAssertions(
       case "contains": {
         const op = a.operator ?? "contains";
         actual = context.body;
-        passed = compareValues(context.body, String(a.expected), op);
+        passed = compareValues(context.body, expected, op);
         break;
       }
       case "responseTime":
         actual = context.durationMs;
-        passed = context.durationMs <= Number(a.expected);
+        passed = compareValues(String(context.durationMs), expected, a.operator ?? "lt");
         break;
     }
 

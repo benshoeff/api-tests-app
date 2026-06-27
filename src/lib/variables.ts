@@ -20,15 +20,31 @@ export function interpolateRecord(
 }
 
 export function extractJsonPath(obj: unknown, path: string): unknown {
-  if (!path.startsWith("$.")) return undefined;
-  const parts = path.slice(2).split(".");
+  if (!path.startsWith("$")) return undefined;
+  
   let current: unknown = obj;
+  let remainingPath = path.slice(1);
+
+  if (remainingPath.startsWith(".")) {
+    remainingPath = remainingPath.slice(1);
+  }
+
+  const parts = remainingPath.split(".");
   for (const part of parts) {
     if (current == null || typeof current !== "object") return undefined;
-    current = (current as Record<string, unknown>)[part];
+    const bracketMatch = part.match(/^\[(\d+)\]$/);
+    if (bracketMatch) {
+      const index = parseInt(bracketMatch[1], 10);
+      if (!Array.isArray(current)) return undefined;
+      current = current[index];
+    } else {
+      current = (current as Record<string, unknown>)[part];
+    }
   }
   return current;
 }
+
+import { generateRandomValues } from "@/lib/random";
 
 export function buildVariableContext(params: {
   environment: { name: string; baseUrl: string | null };
@@ -42,6 +58,7 @@ export function buildVariableContext(params: {
     "env.baseUrl": params.environment.baseUrl ?? "",
     "run.id": params.runId,
     ...params.globalValues,
+    ...generateRandomValues(),
     ...(params.local ?? {}),
   };
   return ctx;

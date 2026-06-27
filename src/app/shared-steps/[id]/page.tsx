@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SplitStepEditor } from "@/components/tests/split-step-editor";
+import { stepsFromApi, type StepDraft } from "@/lib/step-utils";
 
 interface SharedStepDetail {
   id: string;
@@ -23,7 +25,7 @@ export default function SharedStepEditorPage() {
   const { data, loading, refresh } = useFetch<SharedStepDetail>(`/api/shared-steps/${id}`, [id]);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [itemsJson, setItemsJson] = useState("");
+  const [items, setItems] = useState<StepDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -31,24 +33,17 @@ export default function SharedStepEditorPage() {
     if (data) {
       setName(data.name);
       setDescription(data.description ?? "");
-      setItemsJson(JSON.stringify(data.items.map((i) => ({ type: i.type, config: i.config })), null, 2));
+      setItems(stepsFromApi(data.items));
     }
   }, [data]);
 
   const handleSave = async () => {
     setSaving(true);
-    let items;
-    try {
-      items = JSON.parse(itemsJson);
-    } catch {
-      setError("Invalid JSON");
-      setSaving(false);
-      return;
-    }
+    setError(null);
     const result = await apiPatch(`/api/shared-steps/${id}`, {
       name,
       description: description || null,
-      items,
+      items: items.map((s, i) => ({ type: s.type, config: s.config, sortOrder: i })),
     });
     setSaving(false);
     if (result.error) setError(result.error);
@@ -56,7 +51,7 @@ export default function SharedStepEditorPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm("Delete?")) return;
+    if (!confirm("Delete this shared step group?")) return;
     await apiDelete(`/api/shared-steps/${id}`);
     router.push("/shared-steps");
   };
@@ -64,7 +59,7 @@ export default function SharedStepEditorPage() {
   if (loading) return <div className="h-64 animate-pulse rounded-xl bg-muted" />;
 
   return (
-    <div className="max-w-3xl">
+    <div className="max-w-5xl">
       <PageHeader
         title={name}
         actions={
@@ -73,7 +68,7 @@ export default function SharedStepEditorPage() {
               <Save className="h-4 w-4" /> Save
             </Button>
             <Button variant="ghost" onClick={handleDelete}>
-              <Trash2 className="h-4 w-4 text-destructive" />
+              <Trash2 className="h-3.5 w-3.5 text-destructive" />
             </Button>
           </>
         }
@@ -86,9 +81,11 @@ export default function SharedStepEditorPage() {
           </CardContent>
         </Card>
         <Card>
-          <CardHeader><CardTitle>Steps</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle>Steps</CardTitle>
+          </CardHeader>
           <CardContent>
-            <Textarea value={itemsJson} onChange={(e) => setItemsJson(e.target.value)} className="min-h-[280px] font-mono text-xs" />
+            <SplitStepEditor steps={items} onChange={setItems} />
           </CardContent>
         </Card>
         {error && <p className="text-sm text-destructive">{error}</p>}

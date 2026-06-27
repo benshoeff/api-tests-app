@@ -123,14 +123,22 @@ export async function runTest(
             assertions?: import("@/types").Assertion[];
           };
           const url = resolveUrl(interpolate(config.url, ctx), environment.baseUrl);
-          const headers = interpolateRecord(config.headers, ctx);
+          const headers: Record<string, string> = interpolateRecord(config.headers, ctx);
           const body = config.body ? interpolate(config.body, ctx) : undefined;
+
+          const finalBody = body && config.method !== "GET" && config.method !== "HEAD" ? body : undefined;
+          if (finalBody && !headers["content-type"]) {
+            const trimmed = finalBody.trim();
+            if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+              headers["content-type"] = "application/json";
+            }
+          }
 
           const reqStart = Date.now();
           const response = await fetch(url, {
             method: config.method ?? "GET",
             headers,
-            body: body && config.method !== "GET" && config.method !== "HEAD" ? body : undefined,
+            body: finalBody,
             signal: abortController.signal,
           });
 
@@ -180,7 +188,7 @@ export async function runTest(
           });
 
           if (config.assertions?.length) {
-            const { passed, results } = evaluateAssertions(config.assertions, lastResponse);
+            const { passed, results } = evaluateAssertions(config.assertions, lastResponse, ctx);
             if (!passed) {
               stepResults.push({
                 stepIndex: i,
@@ -203,7 +211,7 @@ export async function runTest(
             throw new Error("Assert step requires a prior HTTP response");
           }
 
-          const { passed, results } = evaluateAssertions(config.assertions, lastResponse);
+          const { passed, results } = evaluateAssertions(config.assertions, lastResponse, ctx);
 
           stepResults.push({
             stepIndex: i,

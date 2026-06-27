@@ -25,6 +25,7 @@ export interface HttpStepConfig {
   headers?: Record<string, string>;
   body?: string;
   captureVariables?: Record<string, string>;
+  assertions?: Assertion[];
 }
 
 export type AssertionOperator =
@@ -36,7 +37,8 @@ export type AssertionOperator =
   | "lt"
   | "regex"
   | "not_regex"
-  | "undefined";
+  | "undefined"
+  | "is_not_empty";
 
 export type ElementSelector = "body" | "any" | "first" | "every";
 
